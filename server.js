@@ -29,52 +29,48 @@ app.post("/api/book", async (req, res) => {
 
         const bookingId = "APX-" + Math.floor(100000 + Math.random() * 900000);
 
-        // 1️⃣ Send Notification to Hospital Admin
+        // 1️⃣ Send to Hospital (CRITICAL)
         const resultAdmin = await resend.emails.send({
             from: "onboarding@resend.dev",
             to: "nitinmishra28a@gmail.com",
             subject: `New Appointment - ${bookingId}`,
-            html: `
-            <h2>New Appointment Booking</h2>
-            <p><strong>Booking ID:</strong> ${bookingId}</p>
-            <p><strong>Name:</strong> ${fullName}</p>
-            <p><strong>Email:</strong> ${email}</p>
-            <p><strong>Phone:</strong> ${phone}</p>
-            <p><strong>Department:</strong> ${department}</p>
-            <p><strong>Doctor:</strong> ${doctor}</p>
-            <p><strong>Date:</strong> ${date}</p>
-            <p><strong>Time:</strong> ${time}</p>
-            <p><strong>Message:</strong> ${message || "Not Provided"}</p>
-          `,
+            html: `...`,
         });
 
-        // 2️⃣ Send Confirmation to Patient (Using a different variable name)
-        const resultPatient = await resend.emails.send({
-            from: "onboarding@resend.dev",
-            to: email,
-            subject: `Appointment Confirmed - ${bookingId}`,
-            html: `
-            <h2>Your Appointment is Confirmed ✅</h2>
-            <p><strong>Booking ID:</strong> ${bookingId}</p>
-            <p><strong>Doctor:</strong> ${doctor}</p>
-            <p><strong>Department:</strong> ${department}</p>
-            <p><strong>Date:</strong> ${date}</p>
-            <p><strong>Time:</strong> ${time}</p>
-            <br/>
-            <p>Please arrive 15 minutes early.</p>
-            <p>Thank you for choosing Apex Hospital.</p>
-          `,
-        });
+        if (resultAdmin.error) {
+            console.error("Admin email failed:", resultAdmin.error);
+            return res.status(500).json({
+                success: false,
+                message: "Hospital notification failed"
+            });
+        }
 
-        console.log("Admin Email:", resultAdmin);
-        console.log("Patient Email:", resultPatient);
+        // 2️⃣ Send to Patient (NON-CRITICAL)
+        try {
+            const resultPatient = await resend.emails.send({
+                from: "onboarding@resend.dev",
+                to: email,
+                subject: `Appointment Confirmed - ${bookingId}`,
+                html: `...`,
+            });
+
+            if (resultPatient.error) {
+                console.error("Patient email failed:", resultPatient.error);
+            }
+
+        } catch (patientError) {
+            console.error("Patient email crashed:", patientError);
+        }
+
+        // Booking success regardless of patient email
+        res.json({ success: true, bookingId });
 
         // Check if Resend actually sent it (it returns error if API key is invalid or domain not verified)
         if (resultAdmin.error || resultPatient.error) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Email service error", 
-                error: resultAdmin.error || resultPatient.error 
+            return res.status(400).json({
+                success: false,
+                message: "Email service error",
+                error: resultAdmin.error || resultPatient.error
             });
         }
 
