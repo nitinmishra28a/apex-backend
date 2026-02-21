@@ -29,7 +29,8 @@ app.post("/api/book", async (req, res) => {
 
         const bookingId = "APX-" + Math.floor(100000 + Math.random() * 900000);
 
-        const result = await resend.emails.send({
+        // 1️⃣ Send Notification to Hospital Admin
+        const resultAdmin = await resend.emails.send({
             from: "onboarding@resend.dev",
             to: "nitinmishra28a@gmail.com",
             subject: `New Appointment - ${bookingId}`,
@@ -47,8 +48,8 @@ app.post("/api/book", async (req, res) => {
           `,
         });
 
-        // 2️⃣ Send Confirmation to Patient
-        await resend.emails.send({
+        // 2️⃣ Send Confirmation to Patient (Using a different variable name)
+        const resultPatient = await resend.emails.send({
             from: "onboarding@resend.dev",
             to: email,
             subject: `Appointment Confirmed - ${bookingId}`,
@@ -64,16 +65,28 @@ app.post("/api/book", async (req, res) => {
             <p>Thank you for choosing Apex Hospital.</p>
           `,
         });
-        console.log("Resend response:", result);
+
+        console.log("Admin Email:", resultAdmin);
+        console.log("Patient Email:", resultPatient);
+
+        // Check if Resend actually sent it (it returns error if API key is invalid or domain not verified)
+        if (resultAdmin.error || resultPatient.error) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Email service error", 
+                error: resultAdmin.error || resultPatient.error 
+            });
+        }
 
         res.json({ success: true, bookingId });
 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false });
+        console.error("Server Error:", error);
+        res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 });
 
-app.listen(process.env.PORT || 5000, () =>
-    console.log("Server running")
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () =>
+    console.log(`Server running on port ${PORT}`)
 );
