@@ -34,17 +34,35 @@ app.post("/api/book", async (req, res) => {
             to: "nitinmishra28a@gmail.com",
             subject: `New Appointment - ${bookingId}`,
             html: `
-              <h2>New Appointment Booking</h2>
-              <p><strong>Booking ID:</strong> ${bookingId}</p>
-              <p><strong>Name:</strong> ${fullName}</p>
-              <p><strong>Email:</strong> ${email}</p>
-              <p><strong>Phone:</strong> ${phone}</p>
-              <p><strong>Department:</strong> ${department}</p>
-              <p><strong>Doctor:</strong> ${doctor}</p>
-              <p><strong>Date:</strong> ${date}</p>
-              <p><strong>Time:</strong> ${time}</p>
-              <p><strong>Message:</strong> ${message || "Not Provided"}</p>
-            `,
+            <h2>New Appointment Booking</h2>
+            <p><strong>Booking ID:</strong> ${bookingId}</p>
+            <p><strong>Name:</strong> ${fullName}</p>
+            <p><strong>Email:</strong> ${email}</p>
+            <p><strong>Phone:</strong> ${phone}</p>
+            <p><strong>Department:</strong> ${department}</p>
+            <p><strong>Doctor:</strong> ${doctor}</p>
+            <p><strong>Date:</strong> ${date}</p>
+            <p><strong>Time:</strong> ${time}</p>
+            <p><strong>Message:</strong> ${message || "Not Provided"}</p>
+          `,
+        });
+
+        // 2️⃣ Send Confirmation to Patient
+        await resend.emails.send({
+            from: "onboarding@resend.dev",
+            to: email,
+            subject: `Appointment Confirmed - ${bookingId}`,
+            html: `
+            <h2>Your Appointment is Confirmed ✅</h2>
+            <p><strong>Booking ID:</strong> ${bookingId}</p>
+            <p><strong>Doctor:</strong> ${doctor}</p>
+            <p><strong>Department:</strong> ${department}</p>
+            <p><strong>Date:</strong> ${date}</p>
+            <p><strong>Time:</strong> ${time}</p>
+            <br/>
+            <p>Please arrive 15 minutes early.</p>
+            <p>Thank you for choosing Apex Hospital.</p>
+          `,
         });
         console.log("Resend response:", result);
 
