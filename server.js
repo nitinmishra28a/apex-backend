@@ -16,6 +16,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 app.post("/api/book", async (req, res) => {
     try {
+        // 🔎 Reason 3 Fix: Destructure Insurance fields from req.body
         const {
             fullName,
             email,
@@ -25,68 +26,59 @@ app.post("/api/book", async (req, res) => {
             date,
             time,
             message,
+            insurance,          // Received from frontend
+            insuranceProvider   // Received from frontend
         } = req.body;
 
         const bookingId = "APX-" + Math.floor(100000 + Math.random() * 900000);
 
-        // 1️⃣ Send to Hospital (CRITICAL)
+        // 1️⃣ Send to Hospital
         const resultAdmin = await resend.emails.send({
             from: "onboarding@resend.dev",
             to: "nitinmishra28a@gmail.com",
-            subject: `New Appointment Request - ${bookingId}`,
+            subject: `New Appointment - ${bookingId}`,
             html: `
-                <h3>New Appointment Details</h3>
-                <p><strong>Booking ID:</strong> ${bookingId}</p>
-                <p><strong>Patient:</strong> ${fullName}</p>
-                <p><strong>Department:</strong> ${department}</p>
-                <p><strong>Doctor:</strong> ${doctor}</p>
-                <p><strong>Date/Time:</strong> ${date} at ${time}</p>
-                <p><strong>Contact:</strong> ${phone} / ${email}</p>
-                <p><strong>Message:</strong> ${message || 'N/A'}</p>
+                <div style="font-family: sans-serif; line-height: 1.6; color: #333;">
+                    <h2 style="color: #1e40af;">New Appointment Details</h2>
+                    <hr />
+                    <p><strong>Booking ID:</strong> ${bookingId}</p>
+                    <p><strong>Patient Name:</strong> ${fullName}</p>
+                    <p><strong>Contact:</strong> ${phone} | ${email}</p>
+                    <p><strong>Department:</strong> ${department}</p>
+                    <p><strong>Doctor:</strong> ${doctor}</p>
+                    <p><strong>Scheduled:</strong> ${date} at ${time}</p>
+                    
+                    <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                        <p><strong>Insurance Used:</strong> ${insurance ? "✅ Yes" : "❌ No"}</p>
+                        ${insurance ? `<p><strong>Provider:</strong> ${insuranceProvider}</p>` : ""}
+                    </div>
+
+                    <p><strong>Message:</strong> ${message || 'No additional message'}</p>
+                </div>
             `,
         });
 
-        // If the critical hospital email fails, stop here and tell the frontend
         if (resultAdmin.error) {
-            console.error("Admin email failed:", resultAdmin.error);
-            return res.status(500).json({
-                success: false,
-                message: "Hospital notification failed. Please try again later."
-            });
+            console.error("Resend Error:", resultAdmin.error);
+            return res.status(500).json({ success: false, message: "Email failed" });
         }
 
-        // 2️⃣ Send to Patient (NON-CRITICAL - We don't stop the booking if this fails)
+        // 2️⃣ Send Confirmation to Patient
         try {
             await resend.emails.send({
                 from: "onboarding@resend.dev",
                 to: email,
-                subject: `Appointment Confirmed - ${bookingId}`,
-                html: `
-                    <h1>Booking Confirmed!</h1>
-                    <p>Dear ${fullName}, your appointment with ${doctor} is scheduled for ${date} at ${time}.</p>
-                    <p>Your Reference ID is: <strong>${bookingId}</strong></p>
-                `,
+                subject: "Your Appointment is Confirmed!",
+                html: `<p>Hi ${fullName}, your appointment for ${department} is confirmed. Ref: ${bookingId}</p>`
             });
-        } catch (patientError) {
-            // We just log this, we don't crash the server
-            console.error("Patient email delivery skipped or failed:", patientError.message);
-        }
+        } catch (e) { console.log("Patient email skipped"); }
 
-        // 3️⃣ Final Success Response
-        // We use 'return' to ensure no other code executes after this
-        return res.json({
-            success: true,
-            bookingId
-        });
+        return res.json({ success: true, bookingId });
 
     } catch (error) {
-        console.error("CRITICAL Server Error:", error);
-        // Ensure only ONE response is sent even in error
+        console.error("Server Crash:", error);
         if (!res.headersSent) {
-            return res.status(500).json({
-                success: false,
-                message: "Internal Server Error"
-            });
+            return res.status(500).json({ success: false, message: "Internal error" });
         }
     }
 });
